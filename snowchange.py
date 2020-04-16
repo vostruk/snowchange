@@ -5,6 +5,7 @@ import time
 import hashlib
 import snowflake.connector
 
+ENVIRONMENT_SQL_CODE_PATTERN="{ENV_NAME}"
 def snowchange(environment_name, append_environment_name, snowflake_account, snowflake_region, snowflake_user, snowflake_role, snowflake_warehouse, root_folder, verbose):
   if "SNOWSQL_PWD" not in os.environ:
     raise ValueError("The SNOWSQL_PWD environment variable has not been defined")
@@ -73,7 +74,7 @@ def snowchange(environment_name, append_environment_name, snowflake_account, sno
           scripts_skipped += 1
         else:
           print("Applying change script %s to database %s" % (script['script_name'], snowflake_database_name))
-          apply_change_script(snowflake_database_name, script, verbose)
+          apply_change_script(snowflake_database_name, script, verbose, environment_name)
           scripts_applied += 1
 
       print("Successfully applied %d change scripts (skipping %d)" % (scripts_applied, scripts_skipped))
@@ -167,7 +168,7 @@ def fetch_change_history(database, verbose):
 
   return change_history
 
-def apply_change_script(database, script, verbose):
+def apply_change_script(database, script, verbose, environment_name):
   # First read the contents of the script
   with open(script['script_full_path'],'r') as content_file:
     content = content_file.read().strip()
@@ -177,6 +178,8 @@ def apply_change_script(database, script, verbose):
   checksum = hashlib.sha224(content.encode('utf-8')).hexdigest()
   execution_time = 0
   status = 'Success'
+
+  content=content.replace(ENVIRONMENT_SQL_CODE_PATTERN, environment_name.upper())
 
   # Execute the contents of the script
   if len(content) > 0:
